@@ -29,10 +29,19 @@ jobs:
           node-version: ${{ matrix.node_version }}
       - name: Install Dependencies
         run: npm ci
+      # marked.min.js is a committed build product, minified from lib/marked.js,
+      # and it is listed in package.json#files -- so it ships in the tarball and
+      # a security fix that only lands in lib/ would leave every CDN consumer on
+      # the vulnerable bundle. Regenerate it from lib/marked.js before testing
+      # and packing so the two can never drift. uglify-js is pinned in the
+      # lockfile, so the output is reproducible; test/unit/bundles-spec.js fails
+      # loudly if this step is ever dropped.
+      - name: Build Minified Bundle 🗜️
+        run: npm run minify
       - name: Run Unit Tests 👩🏽‍💻
-        run: npm run test:unit ${{ inputs.test-filter }}
+        run: npm run test:unit -- ${{ inputs.test-filter }}
       - name: Run Spec Tests 👩🏽‍💻
-        run: npm run test:specs ${{ inputs.test-filter }}
+        run: npm run test:specs -- ${{ inputs.test-filter }}
       - name: Pack 📦
         if: matrix.node_version == '16'
         run: npm pack
